@@ -7,12 +7,9 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
-use Illuminate\Support\Facades\Log;
-
 
 class UserController extends Controller
 {
-
 
     function LoginPage():View{
         return view('pages.auth.login-page');
@@ -38,57 +35,53 @@ class UserController extends Controller
 
 
 
-    public function UserRegistration(Request $request)
-    {
+    function UserRegistration(Request $request){
         try {
             User::create([
                 'firstName' => $request->input('firstName'),
                 'lastName' => $request->input('lastName'),
                 'email' => $request->input('email'),
                 'mobile' => $request->input('mobile'),
-                'password' => bcrypt($request->input('password')),
+                'password' => $request->input('password'),
             ]);
             return response()->json([
                 'status' => 'success',
-                'message' => 'User Registration Successful'
-            ], 201);
-        } catch (Exception $e) {
-            // Log the exception for debugging
-            Log::error('User registration failed: ', ['error' => $e->getMessage()]);
+                'message' => 'User Registration Successfully'
+            ],200);
 
-            // Return the exception message in the response
+        } catch (Exception $e) {
             return response()->json([
                 'status' => 'failed',
-                'message' => 'User Registration Failed: ' . $e->getMessage()
-            ], 500);
+                'message' => 'User Registration Failed'
+            ],200);
+
         }
     }
 
     function UserLogin(Request $request){
-        $count=User::where('email','=',$request->input('email'))
-             ->where('password','=',$request->input('password'))
-             ->select('id')->first();
+       $count=User::where('email','=',$request->input('email'))
+            ->where('password','=',$request->input('password'))
+            ->select('id')->first();
 
-        if($count!==null){
-            // User Login-> JWT Token Issue
-            $token=JWTToken::CreateToken($request->input('email'),$count->id);
-            return response()->json([
-                'status' => 'success',
-                'message' => 'User Login Successful',
-                'token'=> $token
-            ],200)->cookie('token',$token,time()+60*24*30);
-        }
-        else{
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'unauthorized'
-            ],200);
+       if($count!==null){
+           // User Login-> JWT Token Issue
+           $token=JWTToken::CreateToken($request->input('email'),$count->id);
+           return response()->json([
+               'status' => 'success',
+               'message' => 'User Login Successful',
+           ],200)->cookie('token',$token,time()+60*24*30);
+       }
+       else{
+           return response()->json([
+               'status' => 'failed',
+               'message' => 'unauthorized'
+           ],200);
 
-        }
+       }
 
-     }
+    }
 
-     function SendOTPCode(Request $request){
+    function SendOTPCode(Request $request){
 
         $email=$request->input('email');
         $otp=rand(1000,9999);
@@ -112,6 +105,7 @@ class UserController extends Controller
             ]);
         }
     }
+
     function VerifyOTP(Request $request){
         $email=$request->input('email');
         $otp=$request->input('otp');
@@ -156,5 +150,45 @@ class UserController extends Controller
         }
     }
 
+    function UserLogout(){
+        return redirect('/')->cookie('token','',-1);
+    }
+
+
+    function UserProfile(Request $request){
+        $email=$request->header('email');
+        $user=User::where('email','=',$email)->first();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Request Successful',
+            'data' => $user
+        ],200);
+    }
+
+    function UpdateProfile(Request $request){
+        try{
+            $email=$request->header('email');
+            $firstName=$request->input('firstName');
+            $lastName=$request->input('lastName');
+            $mobile=$request->input('mobile');
+            $password=$request->input('password');
+            User::where('email','=',$email)->update([
+                'firstName'=>$firstName,
+                'lastName'=>$lastName,
+                'mobile'=>$mobile,
+                'password'=>$password
+            ]);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Request Successful',
+            ],200);
+
+        }catch (Exception $exception){
+            return response()->json([
+                'status' => 'fail',
+                'message' => 'Something Went Wrong',
+            ],200);
+        }
+    }
 
 }
